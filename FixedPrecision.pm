@@ -52,7 +52,7 @@ use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $PACKAGE);
 @EXPORT = qw(
 	
 );
-$VERSION = '0.11';
+$VERSION = '0.12';
 $PACKAGE = 'Math::FixedPrecision';
 
 # Preloaded methods go here.
@@ -368,13 +368,14 @@ sub boolean		#06/28/99 9:47:AM
 
 {
     my($object) = @_;
-    my($result);
-
-    eval
-    {
-        $result = $object->{VAL}->is_empty();
-    };
-    return(! $result);
+	if ( $object->{VAL} != 0 )
+	{
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
 }	##boolean
 
 # Autoload methods go after =cut, and are processed by the autosplit program.
