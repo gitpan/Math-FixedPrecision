@@ -52,7 +52,7 @@ use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $PACKAGE);
 @EXPORT = qw(
 	
 );
-$VERSION = '0.12';
+$VERSION = '0.13';
 $PACKAGE = 'Math::FixedPrecision';
 
 # Preloaded methods go here.
@@ -454,7 +454,7 @@ None by default.
 
 =head1 AUTHOR
 
-John Peacock, jpeacock@univpress.com
+John Peacock <jpeacock@rowman.com>
 
 =head1 SEE ALSO
 
