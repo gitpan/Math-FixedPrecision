@@ -10,3 +10,6 @@ Revision history for Perl extension Math::FixedPrecision.
 
 0.03  4/27/2000 9:44AM
 	- Fix absolutely stupid mistake with numify
+
+0.04  5/11/2000 3:01PM
+	- Fix boundary condition with values < 1

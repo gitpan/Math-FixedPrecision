@@ -6,7 +6,7 @@
 # Change 1..1 below to 1..last_test_to_print .
 # (It may become useful if the test is moved to ./t subdirectory.)
 
-BEGIN { $| = 1; print "1..15\n"; }
+BEGIN { $| = 1; print "1..17\n"; }
 END {print "not ok 1\n" unless $loaded;}
 use Math::FixedPrecision;
 $loaded = 1;
@@ -114,7 +114,7 @@ unless ( $newnumber == 3 )
 
 print "ok 14\n";
 
-$number = Math::FixedPrecision->new(0.10);
+$number = Math::FixedPrecision->new("0.10");
 $newnumber = $number * 200;
 unless ( $newnumber == 20 )
 {
@@ -122,3 +122,19 @@ unless ( $newnumber == 20 )
 }
 
 print "ok 15\n";
+
+unless ( "$number" eq "0.10" )
+{
+	print "not "
+}
+
+print "ok 16\n";
+
+$number = Math::FixedPrecision->new("0.0");
+unless ( "$number" eq "0.0" )
+{
+	print "not "
+}
+
+print "ok 17\n";
+

@@ -52,7 +52,7 @@ use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $PACKAGE);
 @EXPORT = qw(
 	
 );
-$VERSION = '0.03';
+$VERSION = '0.04';
 $PACKAGE = 'Math::FixedPrecision';
 
 # Preloaded methods go here.
@@ -372,9 +372,12 @@ sub stringify		#05/10/99 3:52:PM
 	my $self  = shift;
 	my $value = abs($self->{VAL}) + 0;
 	my $neg   = $self->{VAL} < 0 ? 1 : 0; 
-	($value = reverse "$value") =~ s/\+//;
-	substr($value,$self->{RADIX},0) = "." if $self->{RADIX};
-	$value = reverse $value;
+	$value =~ s/\+//;
+	if ( $self->{RADIX} and length("$value") <= $self->{RADIX} )
+	{
+		$value = "0" x ($self->{RADIX} - length("$value") + 1) . "$value";
+	}
+	substr($value,-1*$self->{RADIX},0) = "." if $self->{RADIX};
 	return "$value";
 }	##stringify
 
