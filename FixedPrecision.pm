@@ -44,15 +44,15 @@ use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $PACKAGE);
 # If you do not need this, moving things directly into @EXPORT or @EXPORT_OK
 # will save memory.
 %EXPORT_TAGS = ( 'all' => [ qw(
-	
+
 ) ] );
 
 @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 
 @EXPORT = qw(
-	
+
 );
-$VERSION = '0.13';
+$VERSION = '0.14';
 $PACKAGE = 'Math::FixedPrecision';
 
 # Preloaded methods go here.
@@ -80,14 +80,14 @@ sub new		#04/20/00 12:08:PM
 		{
 			$radix  = $decimal;
 		}
-		elsif ( $decimal )          # Too many decimal places 
+		elsif ( defined $decimal )          # Too many decimal places
 		{
 			my $var = $self->{VAL}->ffround(-1 * $decimal);
 			$self->{VAL} = new Math::BigFloat $var;
-			$radix = 0;		# force the use of the asserted decimal 
+			$radix = 0;		# force the use of the asserted decimal
 		}
 	}
-	else 
+	else
 	{
 		$radix  = 0;			# infinite precision
 	}
@@ -100,11 +100,11 @@ sub new		#04/20/00 12:08:PM
 	{
 		$self->{RADIX} = $decimal;
 	}
-	else 
+	else
 	{
 		$self->{RADIX} = 0;
 	}
-	
+
 	return $self;
 }	##new
 
@@ -150,12 +150,12 @@ sub add		#05/10/99 5:00:PM
 			$oper1->{RADIX}  = $oper2->{RADIX};
 		}
 	}
-	
+
 	if ( $oper1->{RADIX} <= $oper2->{RADIX} )	# need to reduce the precision for calc
 	{
 		$newop = $oper1->_new($oper1->{VAL} + $oper2->{VAL},$oper1->{RADIX});
 	}
-	else 
+	else
 	{
 		$newop = $oper1->_new($oper2->{VAL} + $oper1->{VAL},$oper2->{RADIX});
 	}
@@ -179,7 +179,7 @@ sub subtract		#05/10/99 5:05:PM
 			$oper2->{RADIX}  = $oper1->{RADIX};
 		}
 	}
-	
+
 	unless ( $oper1->{RADIX} )	# no decimal place defined
 	{
 		if ( $oper2->{RADIX} )
@@ -187,7 +187,7 @@ sub subtract		#05/10/99 5:05:PM
 			$oper1->{RADIX}  = $oper2->{RADIX};
 		}
 	}
-	
+
 	if ( $inverted )	# swap terms so I don't need to do this testing for every step
 	{
 		$newop = $oper2;
@@ -238,7 +238,7 @@ sub multiply		#05/10/99 5:12:PM
 	{
 		return $oper1->_new( $tempval, $oper1->{RADIX} );
 	}
-	else 
+	else
 	{
 		return $oper1->_new( $tempval, $oper2->{RADIX} );
 	}
@@ -273,11 +273,11 @@ sub divide		#05/10/99 5:12:PM
 	{
 		$tempval = $oper2->{VAL} / $oper1->{VAL};
 	}
-	else 
+	else
 	{
 		$tempval = $oper1->{VAL} / $oper2->{VAL};
 	}
-	
+
 	if ( $oper1->{RADIX} < $oper2->{RADIX})	# Need to propagate the lesser accuracy
 	{
 		return $oper1->_new( $tempval,$oper1->{RADIX} );
@@ -294,7 +294,7 @@ sub spaceship		#05/10/99 3:48:PM
 
 {
 	my($oper1,$oper2,$inverted) = @_;
-	
+
 	unless ( ref $oper2 )
 	{
 		$oper2 = $oper1->new($oper2);
@@ -302,7 +302,7 @@ sub spaceship		#05/10/99 3:48:PM
 
 	my $sgn = $inverted ? -1 : 1;
 	return $sgn * ( $oper1->{VAL} <=> $oper2->{VAL} );
-	
+
 }	##spaceship
 
 ############################################################################
@@ -314,7 +314,7 @@ sub compare		#07/05/2000 12:09PM
 
 	return "$number2" cmp "$number1" if $inverted;
 	return "$number1" cmp "$number2";
-	
+
 }	##compare
 
 ############################################################################
@@ -401,22 +401,22 @@ $section = $length / 9; # section is now 11.11 not 11.1111111...
 =head1 DESCRIPTION
 
 There are numerous instances where floating point math is unsuitable, yet the
-data does not consist solely of integers.  This module is designed to completely 
-overload all standard math functions.  The module takes care of all conversion 
+data does not consist solely of integers.  This module is designed to completely
+overload all standard math functions.  The module takes care of all conversion
 and rounding automatically.  Rounding is handled using the IEEE 754 standard
-even mode.  This is a complete rewrite to use Math::BigFloat, rather than 
+even mode.  This is a complete rewrite to use Math::BigFloat, rather than
 Math::BigInt to handle the underlying math operations.
 
 This module is not a replacement for Math::BigFloat; rather it serves a similar
 but slightly different purpose.  By strictly limiting precision automatically,
 this module operates slightly more natually than Math::BigFloat when dealing
-with floating point numbers of limited accuracy.  Math::BigFloat can 
+with floating point numbers of limited accuracy.  Math::BigFloat can
 unintentially inflate the apparent accuracy of a calculation.
 
-Please examine assumptions you are operating under before deciding between this 
-module and Math::BigFloat.  With this module the assumption is that your data 
-is not very accurate and you do not want to overstate any resulting values; 
-with Math::BigFloat, you can completely avoid the rounding problems associated 
+Please examine assumptions you are operating under before deciding between this
+module and Math::BigFloat.  With this module the assumption is that your data
+is not very accurate and you do not want to overstate any resulting values;
+with Math::BigFloat, you can completely avoid the rounding problems associated
 with floating point notation.
 
 =head2 new(number[,precision])
@@ -425,26 +425,26 @@ The constructor accepts either a number or a string that looks like a number.
 But if you want to enforce a specific precision, you either need to pass an
 exact string or include the second term.  In other words, all of the following
 variables have different precisions:
-		
-  $var1 = Math::FixedPrecision->new(10); 
+
+  $var1 = Math::FixedPrecision->new(10);
           # 10 to infinite decimals
   $var2 = Math::FixedPrecision->new(10,2);
           # 10.00 to 2 decimals
-  $var3 = Math::FixedPrecision->new("10.000"); 
+  $var3 = Math::FixedPrecision->new("10.000");
           # 10.000 to 3 decimals
 
 All calculations will return a value rounded to the level of precision of
-the least precise datum.  A number which looks like an integer (like $var1 
+the least precise datum.  A number which looks like an integer (like $var1
 above) has infinite precision (no decimal places).  This is important to note
-since Perl will happily truncate all trailing zeros from a number like 10.000 
-and the code will get 10 no matter how many zeros you typed.  If you need to 
-assert a specific precision, you need to either explicitly state that like 
+since Perl will happily truncate all trailing zeros from a number like 10.000
+and the code will get 10 no matter how many zeros you typed.  If you need to
+assert a specific precision, you need to either explicitly state that like
 $var2 above, or quote the number like $var3.  For example:
 
   $var4 = $var3 * 2; # 20.000 to 3 decimals
-  $var5 = Math::FixedPrecision->new("2.00"); 
+  $var5 = Math::FixedPrecision->new("2.00");
           # 2.00 to 2 decimals
-  $var6 = $var3 * $var 5; 
+  $var6 = $var3 * $var 5;
           # 20.00 to 2 decimals, not 3
 
 

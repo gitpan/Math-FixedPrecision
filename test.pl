@@ -7,7 +7,7 @@
 # Change 1..1 below to 1..last_test_to_print .
 # (It may become useful if the test is moved to ./t subdirectory.)
 
-BEGIN { $| = 1; print "1..25\n"; }
+BEGIN { $| = 1; print "1..26\n"; }
 END {print "not ok 1\n" unless $loaded;}
 use Math::FixedPrecision;
 $loaded = 1;
@@ -57,7 +57,7 @@ unless ( $number == 10.1 )
 	print "not ";
 }
 print "ok 6\n";
-  
+
 $number = Math::FixedPrecision->new(1000.1234);
 $number /= 99.4;
 unless ( $number == 10.1 )
@@ -199,3 +199,11 @@ if ( "$newnumber" ne "0.2" )
 }
 
 print "ok 25\n";
+
+$newnumber= new Math::FixedPrecision(12345.6789,0);
+if ( "$newnumber" ne "12346" )
+{
+	print "not ";
+}
+
+print "ok 26\n";	# Thanks to Les Howard <les@lesandchris.com> for this test

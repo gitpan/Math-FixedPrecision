@@ -19,7 +19,7 @@ Revision history for Perl extension Math::FixedPrecision.
 	- Notice lots of warnings when run under -w
 
 0.06  7/05/2000 11:33am
-	- Eliminate all warnings under -w 
+	- Eliminate all warnings under -w
 	- Make consistent handling of undef $num->{RADIX} terms
 
 0.07  7/06/2000 10:33am
@@ -40,3 +40,6 @@ Revision history for Perl extension Math::FixedPrecision.
 
 0.13  2/21/2001 2:24PM
 	- re-release with Math::BigFloat patch
+
+0.14  3/12/2001 5:21PM
+	- fix handling of forced lower precision (reported by Les Howard <les@lesandchris.com>)
