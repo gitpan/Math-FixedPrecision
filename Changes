@@ -1,0 +1,10 @@
+Revision history for Perl extension Math::FixedPrecision.
+
+0.01  Wed Apr 19 15:53:11 2000
+	- original version; created by h2xs 1.20 with options
+		-X -n Math::FixedPrecision
+
+0.02  4/24/2000 2:05PM
+	- First publicly released version
+	- Treat Integers like infinite precision
+

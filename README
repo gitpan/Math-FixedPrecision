@@ -1,0 +1,28 @@
+Math::FixedPrecision - Decimal Math without Floating Point Errors
+
+This module tries to deal with the common situation of not wanting to use 
+floating point calculations for decimal numbers.  One example is currency 
+values, which should never contain partial units (e.g. cents in USD).  
+Another example is in scientific measurements, where the accuracy should 
+always be limited to the least accurate data point.  A third example is 
+Floating Point notation errors (e.g., What is 100/9?).
+
+I originally wrote Math::Currency to deal with the first issue; I have used
+it successfully internally for almost a year.  I used it to convert from one
+warehouse/order entry system to another, and match the accounts receivable to
+the penny.  This module is an attempt to generalize the case to handle all
+arbitrary precision calculations, all implemented internally by Math::BigInt 
+values.
+
+To install, do the usual:
+
+        perl Makefile.PL
+        make
+        make test
+        make install
+
+Please see the POD file for more details.  A new Math::Currency which will use
+this module as a wrapper will be available shortly at a CPAN site near you...
+
+John Peacock
+jpeacock@univpress.com
