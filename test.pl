@@ -6,7 +6,7 @@
 # Change 1..1 below to 1..last_test_to_print .
 # (It may become useful if the test is moved to ./t subdirectory.)
 
-BEGIN { $| = 1; print "1..17\n"; }
+BEGIN { $| = 1; print "1..18\n"; }
 END {print "not ok 1\n" unless $loaded;}
 use Math::FixedPrecision;
 $loaded = 1;
@@ -137,4 +137,10 @@ unless ( "$number" eq "0.0" )
 }
 
 print "ok 17\n";
+
+unless ( Math::FixedPrecision->new(12.345,2) == 12.35 )
+{
+	print "not ";
+}
+print "ok 18\n";
 

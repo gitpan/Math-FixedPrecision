@@ -52,7 +52,7 @@ use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $PACKAGE);
 @EXPORT = qw(
 	
 );
-$VERSION = '0.04';
+$VERSION = '0.05';
 $PACKAGE = 'Math::FixedPrecision';
 
 # Preloaded methods go here.
@@ -89,7 +89,7 @@ sub new		#04/20/00 12:08:PM
 			{
 				$value += 1;
 			}
-			$radix = 0;		# force the use of the asserted decimal 
+			$radix = undef;		# force the use of the asserted decimal 
 		}
 	}
 	else 
