@@ -8,3 +8,5 @@ Revision history for Perl extension Math::FixedPrecision.
 	- First publicly released version
 	- Treat Integers like infinite precision
 
+0.03  4/27/2000 9:44AM
+	- Fix absolutely stupid mistake with numify

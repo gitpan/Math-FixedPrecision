@@ -1,3 +1,19 @@
+#!/usr2/local/bin/perl
+#
+# PROGRAM:	Math::FixedPrecision.pm	# - 04/26/00 9:10:AM
+# PURPOSE:	Perform precise decimal calculations without floating point
+#
+#------------------------------------------------------------------------------
+#   Copyright (c) 2000 John Peacock
+#
+#   You may distribute under the terms of either the GNU General Public
+#   License or the Artistic License, as specified in the Perl README file,
+#   with the exception that it cannot be placed on a CD-ROM or similar media
+#   for commercial distribution without the prior approval of the author.
+#------------------------------------------------------------------------------
+eval 'exec /usr2/local/bin/perl -S $0 ${1+"$@"}'
+    if 0;
+
 package Math::FixedPrecision;
 
 require 5.005_02;
@@ -36,7 +52,7 @@ use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $PACKAGE);
 @EXPORT = qw(
 	
 );
-$VERSION = '0.02';
+$VERSION = '0.03';
 $PACKAGE = 'Math::FixedPrecision';
 
 # Preloaded methods go here.
@@ -368,7 +384,7 @@ sub numify		#05/11/99 12:02:PM
 
 {
 	my $self = shift;
-	return ( ($self->{VAL} + 50)/100 );
+	return ( ($self->{VAL} ) / 10**$self->{RADIX} ); # Round appropriately + 10**$self->{RADIX}/2 
 }	##numify
 
 ############################################################################
@@ -419,10 +435,22 @@ $section = $length / 9; # section is now 11.11 not 11.1111111...
 
 There are numerous instances where floating point math is unsuitable, yet the
 data does not consist solely of integers.  This module is designed to operate 
-completely transparently for all math functions, once you create an object.  
-The overload module is used to take care of all conversion and rounding auto-
-matically.  For purposes of this module, 5 - 9 are rounded up to the next higher
-value and 0 - 4 are rounded down to the next lower.
+completely overload all standard math functions.  The module takes care of all 
+conversion and rounding automatically.  For purposes of this module, 5 - 9 are 
+rounded up to the next higher value and 0 - 4 are rounded down.
+
+This module is not a replacement for Math::BigFloat, rather it serves a similar
+but slightly different purpose.  By strictly limiting precision automatically,
+this module operates slightly more natually than Math::BigFloat, when dealing
+with floating point numbers of limited accuracy.  Math::FixedPrecision does not
+handle exponential notation, whereas Math::BigFloat can unintentially inflate
+the accuracy of a calculation.
+
+Please examine assumptions you are operating under before deciding between this 
+module and Math::BigFloat.  With this module the assumption is that your data 
+is not very accurate and you do not want to overstate any resulting values; 
+with Math::BigFloat, you can completely avoid the rounding problems associated 
+with floating point notation.
 
 =head2 new(number[,precision])
 
