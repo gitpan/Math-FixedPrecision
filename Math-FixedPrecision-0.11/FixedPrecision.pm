@@ -52,7 +52,7 @@ use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $PACKAGE);
 @EXPORT = qw(
 	
 );
-$VERSION = '0.10';
+$VERSION = '0.11';
 $PACKAGE = 'Math::FixedPrecision';
 
 # Preloaded methods go here.
@@ -323,7 +323,25 @@ sub stringify		#05/10/99 3:52:PM
 
 {
 	my $self  = shift;
-	return sprintf("%.*f",$self->{RADIX},$self->{VAL});
+	my $decimal = length($self->{VAL}) - index($self->{VAL},'.') - 1;
+	my $stringval = "$self->{VAL}";
+	if ( $self->{RADIX} > $decimal )
+	{
+		$stringval .= 0 x ($self->{RADIX} - $decimal);
+	}
+	if ( $stringval =~ /^\./ )	# if there are no digits to the left of the decimal
+	{
+		$stringval = "0" . $stringval;
+	}
+	elsif ( $stringval =~ /^-\./ )	# if there are no digits to the left of the decimal (negative case)
+	{
+		substr($stringval,1,0) = "0";
+	}
+	elsif ( $stringval =~ /\.$/ )	# if there are no digits to the right of the decimal
+	{
+		chop $stringval;
+	}
+	return $stringval
 }	##stringify
 
 ############################################################################

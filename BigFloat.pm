@@ -4,7 +4,6 @@ use Math::BigInt;
 
 use Exporter;  # just for use to be happy
 @ISA = (Exporter);
-
 $VERSION = '0.01';	# never had version before
 
 use overload
@@ -252,12 +251,12 @@ sub fcmp #(fnum_str, fnum_str) return cond_code
 	if ( $xe < $ye )	# adjust the exponents to be equal
 	{
 		$ym .= '0' x ($ye - $xe);
-		$ye -= ($ye - $xe);
+		$ye = $xe;
 	}
 	elsif ( $ye < $xe )	# same here
 	{
 		$xm .= '0' x ($xe - $ye);
-		$xe -= ($xe - $ye);
+		$xe = $ye;
 	}
 	return Math::BigInt::cmp($xm,$ym);
     }
