@@ -1,7 +1,7 @@
-#!/usr2/local/bin/perl
+#!/usr2/local/bin/perl -w
 #
 # PROGRAM:	Math::FixedPrecision.pm	# - 04/26/00 9:10:AM
-# PURPOSE:	Perform precise decimal calculations without floating point
+# PURPOSE:	Perform precise decimal calculations without floating point errors
 #
 #------------------------------------------------------------------------------
 #   Copyright (c) 2000 John Peacock
@@ -19,14 +19,14 @@ package Math::FixedPrecision;
 require 5.005_02;
 use strict;
 
-require Exporter;
-require Math::BigInt;
-use AutoLoader qw(AUTOLOAD);
+use Exporter;
+use Math::BigFloat(0.01);
 use overload 	'+'		=>	\&add,
 				'-'		=>	\&subtract,
 				'*'		=>	\&multiply,
 				'/'		=>	\&divide,
 				'<=>'	=>	\&spaceship,
+				'cmp'	=>	\&compare,
                 '""'	=>	\&stringify,
 				'0+'	=>	\&numify,
 				'abs'	=>	\&absolute,
@@ -34,7 +34,7 @@ use overload 	'+'		=>	\&add,
 				;
 use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $PACKAGE);
 
-@ISA = qw(Exporter Math::BigInt);
+@ISA = qw(Exporter Math::BigFloat);
 
 # Items to export into callers namespace by default. Note: do not export
 # names by default without a very good reason. Use EXPORT_OK instead.
@@ -52,7 +52,7 @@ use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $PACKAGE);
 @EXPORT = qw(
 	
 );
-$VERSION = '0.06';
+$VERSION = '0.10';
 $PACKAGE = 'Math::FixedPrecision';
 
 # Preloaded methods go here.
@@ -69,37 +69,30 @@ sub new		#04/20/00 12:08:PM
 	my $value	= shift || 0;	# Set to 0 if not provided
 	my $decimal	= shift;
 	my $radix	= 0;
-	$value =~ tr/0-9.-//cd;		# Clean out non-numeric characters
+
+	# Store the floating point value
+	$self->{VAL} = Math::BigFloat->new($value);
 
 	# Normalize the number to 1234567.890
 	if ( ( $radix = length($value) - index($value,'.') - 1 ) != length($value) )	# Already has a decimal
 	{
-		$value =~ tr/0-9-//cd;		# Strip the decimal
 		if ( defined $decimal and $radix <= $decimal )	# higher precision overrides actual
 		{
-			$value .= '0' x ( $decimal - $radix );
 			$radix  = $decimal;
 		}
 		elsif ( $decimal )          # Too many decimal places 
 		{
-			$radix = length($value) - $radix + $decimal;
-			my $remainder = substr( $value, $radix, 1 );
-			$value = substr( $value, 0, $radix );
-			if ( $remainder >= 5 )
-			{
-				$value += 1;
-			}
-			$radix = undef;		# force the use of the asserted decimal 
+			my $var = $self->{VAL}->ffround(-1 * $decimal);
+			$self->{VAL} = new Math::BigFloat $var;
+			$radix = 0;		# force the use of the asserted decimal 
 		}
 	}
 	else 
 	{
-		$radix  = undef;			# infinite precision
-		$value .= '0' x $decimal if $decimal;	# Has no decimal to start with (but one may have been specified)
+		$radix  = 0;			# infinite precision
 	}
 
-	$self->{VAL} = Math::BigInt->new($value);
-	if ( defined $radix )
+	if ( $radix )
 	{
 		$self->{RADIX} = $radix;
 	}
@@ -109,15 +102,14 @@ sub new		#04/20/00 12:08:PM
 	}
 	else 
 	{
-		$self->{RADIX} = undef;
+		$self->{RADIX} = 0;
 	}
 	
 	return $self;
 }	##new
 
 ############################################################################
-sub _new		#05/10/99 5:06:PM
-				# only use for values already offset by radix
+sub _new		#07/27/00 4:02:PM
 ############################################################################
 
 {
@@ -125,14 +117,14 @@ sub _new		#05/10/99 5:06:PM
 	my $class  = ref($proto) || $proto;
 	my $parent = ref($proto) && $proto;
 
-	my $self = bless {}, $PACKAGE;
+	my $self = bless {}, $class;
 
 	my $value = shift;
 	my $radix = shift;
-	$self->{VAL}	= Math::BigInt->new($value);
+	$self->{VAL}	= new Math::BigFloat $value->ffround(-$radix);
 	$self->{RADIX}	= $radix;
 	return $self;
-}	##new_int
+}	##_new
 
 ############################################################################
 sub add		#05/10/99 5:00:PM
@@ -140,53 +132,34 @@ sub add		#05/10/99 5:00:PM
 
 {
 	my($oper1,$oper2,$inverted) = @_;
-	my ($newop1,$newop2);
+	my ($newop);
 
 	unless ( ref $oper2 )	# Oops, we've got a regular number here
 	{
-		$oper2 = $PACKAGE->new($oper2);
-		unless ( defined $oper2->{RADIX} )	# no decimal place defined
+		$oper2 = $oper1->new($oper2);	# use the same type as other var
+		unless ( $oper2->{RADIX} )	# no decimal place defined
 		{
-			$oper2->{VAL}	*= 10**$oper1->{RADIX};	# make just as accurate as other term
 			$oper2->{RADIX}  = $oper1->{RADIX};
 		}
 	}
 
-	unless ( defined $oper1->{RADIX} )	# no decimal place defined
+	unless ( $oper1->{RADIX} )	# no decimal place defined
 	{
-		if ( defined $oper2->{RADIX} )
+		if ( $oper2->{RADIX} )
 		{
-			$oper1->{VAL}	*= 10**$oper2->{RADIX};	# make just as accurate as other term
 			$oper1->{RADIX}  = $oper2->{RADIX};
 		}
 	}
 	
-	if ( not defined $oper1->{RADIX} or not defined $oper2->{RADIX} )	# one term infinite accuracy
+	if ( $oper1->{RADIX} <= $oper2->{RADIX} )	# need to reduce the precision for calc
 	{
-		if ( defined $oper1->{RADIX} )
-		{
-			$newop2 = $PACKAGE->_new($oper1->{VAL} + $oper2->{VAL}, $oper1->{RADIX} );
-		}
-		else 
-		{
-			$newop2 = $PACKAGE->_new($oper1->{VAL} + $oper2->{VAL}, $oper2->{RADIX} );
-		}
+		$newop = $oper1->_new($oper1->{VAL} + $oper2->{VAL},$oper1->{RADIX});
 	}
-	elsif ( $oper1->{RADIX} < $oper2->{RADIX} )	# need to reduce the precision for calc
+	else 
 	{
-		$newop1 = $PACKAGE->new($oper2,$oper1->{RADIX});	# do no harm, operate on copy
-		$newop2 = $PACKAGE->_new($oper1->{VAL} + $newop1->{VAL},$oper1->{RADIX});
+		$newop = $oper1->_new($oper2->{VAL} + $oper1->{VAL},$oper2->{RADIX});
 	}
-	elsif ( $oper1->{RADIX} > $oper2->{RADIX} )	# need to reduce the precision for calc
-	{
-		$newop1 = $PACKAGE->new($oper1,$oper2->{RADIX});	# do no harm, operate on copy
-		$newop2 = $PACKAGE->_new($oper2->{VAL} + $newop1->{VAL},$oper2->{RADIX});
-	}
-	else	# same precision, don't do anything 
-	{
-		$newop2 = $PACKAGE->_new($oper1->{VAL} + $oper2->{VAL}, $oper1->{RADIX} );
-	}
-	return $newop2;
+	return $newop;
 }	##add
 
 
@@ -196,59 +169,41 @@ sub subtract		#05/10/99 5:05:PM
 
 {
 	my($oper1,$oper2,$inverted) = @_;
-	my ($newop1,$newop2);
+	my ($newop);
 
 	unless ( ref $oper2 )	# Oops, we've got a regular number here
 	{
-		$oper2 = $PACKAGE->new($oper2);
-		unless ( defined $oper2->{RADIX} )	# no decimal place defined
+		$oper2 = $oper1->new($oper2);	# use the same type as other var
+		unless ( $oper2->{RADIX} )	# no decimal place defined
 		{
-			$oper2->{VAL}	*= 10**$oper1->{RADIX};	# make just as accurate as other term
 			$oper2->{RADIX}  = $oper1->{RADIX};
 		}
 	}
 	
-	unless ( defined $oper1->{RADIX} )	# no decimal place defined
+	unless ( $oper1->{RADIX} )	# no decimal place defined
 	{
-		if ( defined $oper2->{RADIX} )
+		if ( $oper2->{RADIX} )
 		{
-			$oper1->{VAL}	*= 10**$oper2->{RADIX};	# make just as accurate as other term
 			$oper1->{RADIX}  = $oper2->{RADIX};
 		}
 	}
 	
 	if ( $inverted )	# swap terms so I don't need to do this testing for every step
 	{
-		$newop1 = $oper2;
+		$newop = $oper2;
 		$oper2	= $oper1;
-		$oper1	= $newop1;
+		$oper1	= $newop;
 	}
-	if ( not defined $oper1->{RADIX} or not defined $oper2->{RADIX} )	# one term infinite accuracy
+
+	if ( $oper1->{RADIX} <= $oper2->{RADIX} )	# may need to reduce the precision for calc
 	{
-		if ( defined $oper1->{RADIX} )
-		{
-			$newop2 = $PACKAGE->_new($oper1->{VAL} - $oper2->{VAL}, $oper1->{RADIX} );
-		}
-		else 
-		{
-			$newop2 = $PACKAGE->_new($oper1->{VAL} - $oper2->{VAL}, $oper2->{RADIX} );
-		}
+		$newop = $oper1->_new($oper1->{VAL} - $oper2->{VAL}, $oper1->{RADIX});
 	}
-	elsif ( $oper1->{RADIX} < $oper2->{RADIX} )	# need to reduce the precision for calc
+	else
 	{
-		$newop1 = $PACKAGE->new($oper2, $oper1->{RADIX});	# do no harm, operate on copy
-		$newop2 = $PACKAGE->_new($oper1->{VAL} - $newop1->{VAL}, $oper1->{RADIX});
+		$newop = $oper1->_new($oper1->{VAL} - $oper2->{VAL}, $oper2->{RADIX});
 	}
-	elsif ( $oper1->{RADIX} > $oper2->{RADIX} )	# ditto
-	{
-		$newop1 = $PACKAGE->new($oper1,$oper2->{RADIX});	# do no harm, operate on copy
-		$newop2 = $PACKAGE->_new($newop1->{VAL} - $oper2->{VAL}, $oper2->{RADIX});
-	}
-	else	# same precision, don't do anything
-	{
-		$newop2 = $PACKAGE->_new($oper1->{VAL} - $oper2->{VAL}, $oper1->{RADIX});
-	}
-	return $newop2;
+	return $newop;
 }	##subtract
 
 
@@ -262,42 +217,30 @@ sub multiply		#05/10/99 5:12:PM
 
 	unless ( ref $oper2 )
 	{
-		$oper2 = $PACKAGE->new( $oper2 );
-		unless ( defined $oper2->{RADIX} )	# no decimal place defined
+		$oper2 = $PACKAGE->new( $oper2 );	# should NOT be same type
+		unless ( $oper2->{RADIX} )	# no decimal place defined
 		{
-			$oper2->{VAL}	*= 10**(defined $oper1->{RADIX} ? $oper1->{RADIX} : 0);	# make just as accurate as other term
 			$oper2->{RADIX}  = $oper1->{RADIX};
 		}
 	}
 
-	unless ( defined $oper1->{RADIX} )	# no decimal place defined
+	unless ( $oper1->{RADIX} )	# no decimal place defined
 	{
-		if ( defined $oper2->{RADIX} )
+		if ( $oper2->{RADIX} )
 		{
-			$oper1->{VAL}	*= 10**$oper2->{RADIX};	# make just as accurate as other term
 			$oper1->{RADIX}  = $oper2->{RADIX};
 		}
 	}
 
 	$tempval = $oper1->{VAL} * $oper2->{VAL};
-	if ( not defined $oper1->{RADIX} or not defined $oper2->{RADIX} )	# one term infinite accuracy
+
+	if ( $oper1->{RADIX} < $oper2->{RADIX})	# Need to propagate the lesser accuracy
 	{
-		return $PACKAGE->_new( $tempval, $oper1->{RADIX} ) if defined $oper1->{RADIX};
-		return $PACKAGE->_new( $tempval, $oper2->{RADIX} );
+		return $oper1->_new( $tempval, $oper1->{RADIX} );
 	}
-	elsif ( $oper1->{RADIX} < $oper2->{RADIX})	# Need to propagate the lesser accuracy
+	else 
 	{
-		$tempval = ($tempval + 10**$oper2->{RADIX}/2 ) / 10**$oper2->{RADIX};	# Round appropriately
-		return $PACKAGE->_new( $tempval, $oper1->{RADIX} );
-	}
-	elsif ( $oper1->{RADIX} >= $oper2->{RADIX} and defined $oper1->{RADIX} )
-	{
-		$tempval = ($tempval + 10**$oper1->{RADIX}/2 ) / 10**$oper1->{RADIX};	# Round appropriately
-		return $PACKAGE->_new( $tempval, $oper2->{RADIX} );
-	}
-	else # both terms have undef precision (integers); no need to round
-	{
-		return $PACKAGE->_new( $tempval, undef );
+		return $oper1->_new( $tempval, $oper2->{RADIX} );
 	}
 }	##multiply
 
@@ -311,88 +254,37 @@ sub divide		#05/10/99 5:12:PM
 
 	unless ( ref $oper2 )
 	{
-		$oper2 = $PACKAGE->new($oper2);
-		if ( not defined $oper2->{RADIX} and defined $oper1->{RADIX})	# no decimal place defined
+		$oper2 = $PACKAGE->new( $oper2 );	# should NOT be same type
+		unless ( $oper2->{RADIX})	# no decimal place defined
 		{
-			$oper2->{VAL}	*= 10**$oper1->{RADIX};	# make just as accurate as other term
 			$oper2->{RADIX}  = $oper1->{RADIX};
 		}
 	}
 
-	unless ( defined $oper1->{RADIX} )	# no decimal place defined
+	unless ( $oper1->{RADIX} )	# no decimal place defined
 	{
-		if ( defined $oper2->{RADIX} )
+		if ( $oper2->{RADIX} )
 		{
-			$oper1->{VAL}	*= 10**$oper2->{RADIX};	# make just as accurate as other term
 			$oper1->{RADIX}  = $oper2->{RADIX};
 		}
 	}
 
 	if ( $inverted )
 	{
-		# need to inflate the numerator to make sure we still have enough decimal places 
-		$tempval = ( $oper2->{VAL} * 10**($oper1->{RADIX} + $oper2->{RADIX}) ) / $oper1->{VAL};
-		if ( not defined $oper1->{RADIX} or not defined $oper2->{RADIX} )	# one term infinite accuracy
-		{
-			return $PACKAGE->_new( $tempval, $oper1->{RADIX} ) if defined $oper1->{RADIX};
-			return $PACKAGE->_new( $tempval, $oper2->{RADIX} );
-		}
-		elsif ( $oper2->{RADIX} < $oper1->{RADIX})	# Need to propagate the lesser accuracy
-		{
-			$round = $oper2->{RADIX} * 2 - $oper2->{RADIX};	# Hmm, look at this again
-			$tempval = ($tempval + 10**$round/2 ) / 10**$round if $round > 0;	# Round appropriately
-			return $PACKAGE->_new( $tempval,$oper2->{RADIX} );
-		}
-		elsif ( $oper2->{RADIX} >= $oper1->{RADIX} and defined $oper2->{RADIX} )
-		{
-			$round = $oper2->{RADIX} * 2 - $oper1->{RADIX};	# Hmm, look at this again
-			$tempval = ($tempval + 10**$round/2 ) / 10**$round if $round > 0;	# Round appropriately
-			return $PACKAGE->_new( $tempval,$oper1->{RADIX} );
-		}
-		else # both terms have undef precision (integers); no need to round
-		{
-			return $PACKAGE->_new( $tempval, undef );
-		} 
+		$tempval = $oper2->{VAL} / $oper1->{VAL};
 	}
 	else 
 	{
-		# need to inflate the numerator to make sure we still have enough decimal places 
-		if ( not defined $oper1->{RADIX} or not defined $oper2->{RADIX} )	# one term infinite accuracy
-		{
-			if ( defined $oper1->{RADIX} )
-			{
-				$tempval = ( $oper1->{VAL} * 10**$oper1->{RADIX} ) / $oper2->{VAL};
-				return $PACKAGE->_new( $tempval, $oper1->{RADIX} )
-			}
-			elsif ( defined $oper2->{RADIX} )
-			{
-				$tempval = ( $oper1->{VAL} * 10**$oper2->{RADIX} ) / $oper2->{VAL};
-				return $PACKAGE->_new( $tempval, $oper2->{RADIX} );
-			}
-			else 	# both oper#->{RADIX} are undef
-			{
-				$tempval = $oper1->{VAL} / $oper2->{VAL};
-				return $PACKAGE->_new( $tempval, undef );
-			}
-			
-		}
-		$tempval = ( $oper1->{VAL} * 10**($oper2->{RADIX} + $oper1->{RADIX}) ) / $oper2->{VAL};
-		if ( $oper1->{RADIX} < $oper2->{RADIX})	# Need to propagate the lesser accuracy
-		{
-			$round = $oper1->{RADIX} * 2 - $oper1->{RADIX};	# Hmm, look at this again
-			$tempval = ($tempval + 10**$round/2 ) / 10**$round if $round > 0;	# Round appropriately
-			return $PACKAGE->_new( $tempval,$oper1->{RADIX} );
-		}
-		elsif ( $oper1->{RADIX} >= $oper2->{RADIX} and defined $oper1->{RADIX} )
-		{
-			$round = $oper1->{RADIX} * 2 - $oper2->{RADIX};	# Hmm, look at this again
-			$tempval = ($tempval + 10**$round/2 ) / 10**$round if $round > 0;	# Round appropriately
-			return $PACKAGE->_new( $tempval,$oper2->{RADIX} );
-		}
-		else # both terms have undef precision (integers); no need to round
-		{
-			return $PACKAGE->_new( $tempval, undef );
-		} 
+		$tempval = $oper1->{VAL} / $oper2->{VAL};
+	}
+	
+	if ( $oper1->{RADIX} < $oper2->{RADIX})	# Need to propagate the lesser accuracy
+	{
+		return $oper1->_new( $tempval,$oper1->{RADIX} );
+	}
+	else # $oper1->{RADIX} >= $oper2->{RADIX}
+	{
+		return $oper1->_new( $tempval,$oper2->{RADIX} );
 	}
 }	##divide
 
@@ -405,15 +297,25 @@ sub spaceship		#05/10/99 3:48:PM
 	
 	unless ( ref $oper2 )
 	{
-		$oper2 = $PACKAGE->new($oper2);
+		$oper2 = $oper1->new($oper2);
 	}
 
 	my $sgn = $inverted ? -1 : 1;
-
-	# need to selectively inflate both terms to test equality
-	return $sgn * ( ($oper1->{VAL} * 10**(defined $oper2->{RADIX} ? $oper2->{RADIX} : 0) ) <=> ($oper2->{VAL} * 10**(defined $oper1->{RADIX} ? $oper1->{RADIX} : 0) ) );
+	return $sgn * ( $oper1->{VAL} <=> $oper2->{VAL} );
 	
 }	##spaceship
+
+############################################################################
+sub compare		#07/05/2000 12:09PM
+############################################################################
+
+{
+	my($number1,$number2,$inverted) = @_;
+
+	return "$number2" cmp "$number1" if $inverted;
+	return "$number1" cmp "$number2";
+	
+}	##compare
 
 ############################################################################
 sub stringify		#05/10/99 3:52:PM
@@ -421,15 +323,7 @@ sub stringify		#05/10/99 3:52:PM
 
 {
 	my $self  = shift;
-	my $value = abs($self->{VAL}) + 0;
-	my $neg   = $self->{VAL} < 0 ? 1 : 0; 
-	$value =~ s/\+//;
-	if ( $self->{RADIX} and length("$value") <= $self->{RADIX} )
-	{
-		$value = "0" x ($self->{RADIX} - length("$value") + 1) . "$value";
-	}
-	substr($value,-1*$self->{RADIX},0) = "." if $self->{RADIX};
-	return "$value";
+	return sprintf("%.*f",$self->{RADIX},$self->{VAL});
 }	##stringify
 
 ############################################################################
@@ -438,7 +332,7 @@ sub numify		#05/11/99 12:02:PM
 
 {
 	my $self = shift;
-	return ( ($self->{VAL} ) / 10**$self->{RADIX} ); # Round appropriately + 10**$self->{RADIX}/2 
+	return ( $self->{VAL} + 0 );
 }	##numify
 
 ############################################################################
@@ -447,7 +341,7 @@ sub absolute		#06/15/99 4:47:PM
 
 {
 	my $self = shift;
-	return $PACKAGE->_new( abs($self->{VAL}), $self->{RADIX} );
+	return $self->_new( abs($self->{VAL}), $self->{RADIX} );
 }	##absolute
 
 ############################################################################
@@ -490,15 +384,15 @@ $section = $length / 9; # section is now 11.11 not 11.1111111...
 There are numerous instances where floating point math is unsuitable, yet the
 data does not consist solely of integers.  This module is designed to completely 
 overload all standard math functions.  The module takes care of all conversion 
-and rounding automatically.  For purposes of this module, 5 - 9 are rounded up 
-to the next higher value and 0 - 4 are rounded down.
+and rounding automatically.  Rounding is handled using the IEEE 754 standard
+even mode.  This is a complete rewrite to use Math::BigFloat, rather than 
+Math::BigInt to handle the underlying math operations.
 
 This module is not a replacement for Math::BigFloat; rather it serves a similar
 but slightly different purpose.  By strictly limiting precision automatically,
 this module operates slightly more natually than Math::BigFloat when dealing
-with floating point numbers of limited accuracy.  Math::FixedPrecision does not
-handle exponential notation, whereas Math::BigFloat can unintentially inflate
-the accuracy of a calculation.
+with floating point numbers of limited accuracy.  Math::BigFloat can 
+unintentially inflate the apparent accuracy of a calculation.
 
 Please examine assumptions you are operating under before deciding between this 
 module and Math::BigFloat.  With this module the assumption is that your data 
@@ -545,6 +439,6 @@ John Peacock, jpeacock@univpress.com
 
 =head1 SEE ALSO
 
-Math::BigInt
+Math::BigFloat
 
 =cut

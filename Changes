@@ -20,4 +20,13 @@ Revision history for Perl extension Math::FixedPrecision.
 
 0.06  7/05/2000 11:33am
 	- Eliminate all warnings under -w 
-	- Make consistent handling of $num->{RADIX} undef
+	- Make consistent handling of undef $num->{RADIX} terms
+
+0.07  7/06/2000 10:33am
+	- Add cmp to overloaded operators
+	- Revamp spaceship test procedure
+
+0.10  7/28/2000 4:18PM
+	- Change everything
+	- Now inherit from Math::BigFloat
+	- Requires patch to Math::BigFloat

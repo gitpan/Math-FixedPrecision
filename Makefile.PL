@@ -4,5 +4,5 @@ use ExtUtils::MakeMaker;
 WriteMakefile(
     'NAME'		=> 'Math::FixedPrecision',
     'VERSION_FROM'	=> 'FixedPrecision.pm', # finds $VERSION
-    'PREREQ_PM'		=> {}, # e.g., Module::Name => 1.1
+    'PREREQ_PM'		=> {Math::BigFloat => 0.01}, # e.g., Module::Name => 1.1
 );

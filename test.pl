@@ -7,7 +7,7 @@
 # Change 1..1 below to 1..last_test_to_print .
 # (It may become useful if the test is moved to ./t subdirectory.)
 
-BEGIN { $| = 1; print "1..18\n"; }
+BEGIN { $| = 1; print "1..23\n"; } #fnord
 END {print "not ok 1\n" unless $loaded;}
 use Math::FixedPrecision;
 $loaded = 1;
@@ -21,7 +21,7 @@ print "ok 1\n";
 
 my ($number, $newnumber, $thirdnbr);
 
-unless ( $number = Math::FixedPrecision->new(12.345) )
+unless ( $number = Math::FixedPrecision->new(12.346) )
 {
 	print "not ";
 }
@@ -68,7 +68,7 @@ print "ok 7\n";
 
 $number = Math::FixedPrecision->new(9.95);
 $number /= 2;	# 2 is internally promoted to 2.00
-unless ( $number == 4.98 )
+unless ( $number == 4.97 )	# note the even rounding!
 {
 	print "not ";
 }
@@ -80,7 +80,7 @@ unless ( $number < 5.0 )
 }
 print "ok 9\n";
 
-unless ( $newnumber > 1 )
+unless ( 1.1 < $newnumber )
 {
 	print "not ";
 }
@@ -139,9 +139,48 @@ unless ( "$number" eq "0.0" )
 
 print "ok 17\n";
 
-unless ( Math::FixedPrecision->new(12.345,2) == 12.35 )
+$number = Math::FixedPrecision->new(12.345,2);
+unless ( $number == 12.35 )
 {
 	print "not ";
 }
 print "ok 18\n";
 
+$number= new Math::FixedPrecision(1.0,100);
+$newnumber= new Math::FixedPrecision(0.0,100);
+
+unless ( $newnumber < $number )
+{
+	print "not ";
+}
+print "ok 19\n";
+
+unless ( $newnumber < 2.0 )
+{
+	print "not ";
+}
+print "ok 20\n";
+
+$number= new Math::FixedPrecision(7500);
+$newnumber= new Math::FixedPrecision(16.95);
+
+unless ( $newnumber < $number )
+{
+	print "not ";
+}
+print "ok 21\n";
+
+$number= new Math::FixedPrecision(14.673);
+$newnumber= new Math::FixedPrecision(2.6);
+
+if ( $newnumber > $number )
+{
+	print "not ";
+}
+print "ok 22\n";
+
+unless ( $number == 14.673 )
+{
+	print "not ";
+}
+print "ok 23\n";

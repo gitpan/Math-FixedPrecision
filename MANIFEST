@@ -1,5 +1,6 @@
 Changes
 FixedPrecision.pm
+BigFloat.pm
 Makefile.PL
 MANIFEST
 README
