@@ -44,7 +44,7 @@ use vars qw($VERSION @ISA @EXPORT
 @EXPORT = qw(
 
 );
-$VERSION = qw$Revision: 2.0 $[1]/10;
+$VERSION = (qw$Revision: 2.1 $)[1]/10;
 $PACKAGE = 'Math::FixedPrecision';
 
 # Globals
