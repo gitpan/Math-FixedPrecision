@@ -4,7 +4,7 @@
 # PURPOSE:	Perform precise decimal calculations without floating point errors
 #
 #------------------------------------------------------------------------------
-#   Copyright (c) 2000 John Peacock
+#   Copyright (c) 2001 John Peacock
 #
 #   You may distribute under the terms of either the GNU General Public
 #   License or the Artistic License, as specified in the Perl README file,
@@ -20,19 +20,11 @@ require 5.005_02;
 use strict;
 
 use Exporter;
-use Math::BigFloat(0.01);
-use overload 	'+'		=>	\&add,
-				'-'		=>	\&subtract,
-				'*'		=>	\&multiply,
-				'/'		=>	\&divide,
-				'<=>'	=>	\&spaceship,
-				'cmp'	=>	\&compare,
-                '""'	=>	\&stringify,
-				'0+'	=>	\&numify,
-				'abs'	=>	\&absolute,
-				'bool'	=>	\&boolean,
-				;
-use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $PACKAGE);
+use Math::BigFloat(1.27);
+
+use vars qw($VERSION @ISA @EXPORT
+	    @EXPORT_OK %EXPORT_TAGS $PACKAGE
+	    $accuracy $precision $round_mode $div_scale);
 
 @ISA = qw(Exporter Math::BigFloat);
 
@@ -52,8 +44,13 @@ use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $PACKAGE);
 @EXPORT = qw(
 
 );
-$VERSION = '0.14';
+$VERSION = qw$Revision: 2.0 $[1]/10;
 $PACKAGE = 'Math::FixedPrecision';
+
+# Globals
+$accuracy = $precision = undef;
+$round_mode = 'even'; # Banker's rounding obviously
+$div_scale  = 40;
 
 # Preloaded methods go here.
 ############################################################################
@@ -64,14 +61,12 @@ sub new		#04/20/00 12:08:PM
 	my $class  = ref($proto) || $proto;
 	my $parent = ref($proto) && $proto;
 
-	my $self = bless {}, $class;
-
 	my $value	= shift || 0;	# Set to 0 if not provided
 	my $decimal	= shift;
 	my $radix	= 0;
 
 	# Store the floating point value
-	$self->{VAL} = Math::BigFloat->new($value);
+	my $self = bless Math::BigFloat->new($value), $class;
 
 	# Normalize the number to 1234567.890
 	if ( ( $radix = length($value) - index($value,'.') - 1 ) != length($value) )	# Already has a decimal
@@ -82,301 +77,30 @@ sub new		#04/20/00 12:08:PM
 		}
 		elsif ( defined $decimal )          # Too many decimal places
 		{
-			my $var = $self->{VAL}->ffround(-1 * $decimal);
-			$self->{VAL} = new Math::BigFloat $var;
-			$radix = 0;		# force the use of the asserted decimal
+			$self = $self->ffround(-1 * $decimal);
+			$radix = undef;		# force the use of the asserted decimal
 		}
 	}
 	else
 	{
-		$radix  = 0;			# infinite precision
+		$radix  = undef;			# infinite precision
 	}
 
-	if ( $radix )
+	if ( defined $radix )
 	{
-		$self->{RADIX} = $radix;
+		$self->{_p} = - $radix;
 	}
 	elsif ( defined $decimal )
 	{
-		$self->{RADIX} = $decimal;
+		$self->{_p} = - $decimal;
 	}
 	else
 	{
-		$self->{RADIX} = 0;
+		$self->{_p} = undef;
 	}
 
 	return $self;
 }	##new
-
-############################################################################
-sub _new		#07/27/00 4:02:PM
-############################################################################
-
-{
-	my $proto  = shift;
-	my $class  = ref($proto) || $proto;
-	my $parent = ref($proto) && $proto;
-
-	my $self = bless {}, $class;
-
-	my $value = shift;
-	my $radix = shift;
-	$self->{VAL}	= new Math::BigFloat $value->ffround(-$radix);
-	$self->{RADIX}	= $radix;
-	return $self;
-}	##_new
-
-############################################################################
-sub add		#05/10/99 5:00:PM
-############################################################################
-
-{
-	my($oper1,$oper2,$inverted) = @_;
-	my ($newop);
-
-	unless ( ref $oper2 )	# Oops, we've got a regular number here
-	{
-		$oper2 = $oper1->new($oper2);	# use the same type as other var
-		unless ( $oper2->{RADIX} )	# no decimal place defined
-		{
-			$oper2->{RADIX}  = $oper1->{RADIX};
-		}
-	}
-
-	unless ( $oper1->{RADIX} )	# no decimal place defined
-	{
-		if ( $oper2->{RADIX} )
-		{
-			$oper1->{RADIX}  = $oper2->{RADIX};
-		}
-	}
-
-	if ( $oper1->{RADIX} <= $oper2->{RADIX} )	# need to reduce the precision for calc
-	{
-		$newop = $oper1->_new($oper1->{VAL} + $oper2->{VAL},$oper1->{RADIX});
-	}
-	else
-	{
-		$newop = $oper1->_new($oper2->{VAL} + $oper1->{VAL},$oper2->{RADIX});
-	}
-	return $newop;
-}	##add
-
-
-############################################################################
-sub subtract		#05/10/99 5:05:PM
-############################################################################
-
-{
-	my($oper1,$oper2,$inverted) = @_;
-	my ($newop);
-
-	unless ( ref $oper2 )	# Oops, we've got a regular number here
-	{
-		$oper2 = $oper1->new($oper2);	# use the same type as other var
-		unless ( $oper2->{RADIX} )	# no decimal place defined
-		{
-			$oper2->{RADIX}  = $oper1->{RADIX};
-		}
-	}
-
-	unless ( $oper1->{RADIX} )	# no decimal place defined
-	{
-		if ( $oper2->{RADIX} )
-		{
-			$oper1->{RADIX}  = $oper2->{RADIX};
-		}
-	}
-
-	if ( $inverted )	# swap terms so I don't need to do this testing for every step
-	{
-		$newop = $oper2;
-		$oper2	= $oper1;
-		$oper1	= $newop;
-	}
-
-	if ( $oper1->{RADIX} <= $oper2->{RADIX} )	# may need to reduce the precision for calc
-	{
-		$newop = $oper1->_new($oper1->{VAL} - $oper2->{VAL}, $oper1->{RADIX});
-	}
-	else
-	{
-		$newop = $oper1->_new($oper1->{VAL} - $oper2->{VAL}, $oper2->{RADIX});
-	}
-	return $newop;
-}	##subtract
-
-
-############################################################################
-sub multiply		#05/10/99 5:12:PM
-############################################################################
-
-{
-	my($oper1,$oper2,$inverted) = @_;
-	my $tempval;
-
-	unless ( ref $oper2 )
-	{
-		$oper2 = $PACKAGE->new( $oper2 );	# should NOT be same type
-		unless ( $oper2->{RADIX} )	# no decimal place defined
-		{
-			$oper2->{RADIX}  = $oper1->{RADIX};
-		}
-	}
-
-	unless ( $oper1->{RADIX} )	# no decimal place defined
-	{
-		if ( $oper2->{RADIX} )
-		{
-			$oper1->{RADIX}  = $oper2->{RADIX};
-		}
-	}
-
-	$tempval = $oper1->{VAL} * $oper2->{VAL};
-
-	if ( $oper1->{RADIX} < $oper2->{RADIX})	# Need to propagate the lesser accuracy
-	{
-		return $oper1->_new( $tempval, $oper1->{RADIX} );
-	}
-	else
-	{
-		return $oper1->_new( $tempval, $oper2->{RADIX} );
-	}
-}	##multiply
-
-############################################################################
-sub divide		#05/10/99 5:12:PM
-############################################################################
-
-{
-	my($oper1,$oper2,$inverted) = @_;
-	my ($tempval, $round);
-
-	unless ( ref $oper2 )
-	{
-		$oper2 = $PACKAGE->new( $oper2 );	# should NOT be same type
-		unless ( $oper2->{RADIX})	# no decimal place defined
-		{
-			$oper2->{RADIX}  = $oper1->{RADIX};
-		}
-	}
-
-	unless ( $oper1->{RADIX} )	# no decimal place defined
-	{
-		if ( $oper2->{RADIX} )
-		{
-			$oper1->{RADIX}  = $oper2->{RADIX};
-		}
-	}
-
-	if ( $inverted )
-	{
-		$tempval = $oper2->{VAL} / $oper1->{VAL};
-	}
-	else
-	{
-		$tempval = $oper1->{VAL} / $oper2->{VAL};
-	}
-
-	if ( $oper1->{RADIX} < $oper2->{RADIX})	# Need to propagate the lesser accuracy
-	{
-		return $oper1->_new( $tempval,$oper1->{RADIX} );
-	}
-	else # $oper1->{RADIX} >= $oper2->{RADIX}
-	{
-		return $oper1->_new( $tempval,$oper2->{RADIX} );
-	}
-}	##divide
-
-############################################################################
-sub spaceship		#05/10/99 3:48:PM
-############################################################################
-
-{
-	my($oper1,$oper2,$inverted) = @_;
-
-	unless ( ref $oper2 )
-	{
-		$oper2 = $oper1->new($oper2);
-	}
-
-	my $sgn = $inverted ? -1 : 1;
-	return $sgn * ( $oper1->{VAL} <=> $oper2->{VAL} );
-
-}	##spaceship
-
-############################################################################
-sub compare		#07/05/2000 12:09PM
-############################################################################
-
-{
-	my($number1,$number2,$inverted) = @_;
-
-	return "$number2" cmp "$number1" if $inverted;
-	return "$number1" cmp "$number2";
-
-}	##compare
-
-############################################################################
-sub stringify		#05/10/99 3:52:PM
-############################################################################
-
-{
-	my $self  = shift;
-	my $decimal = length($self->{VAL}) - index($self->{VAL},'.') - 1;
-	my $stringval = "$self->{VAL}";
-	if ( $self->{RADIX} > $decimal )
-	{
-		$stringval .= 0 x ($self->{RADIX} - $decimal);
-	}
-	if ( $stringval =~ /^\./ )	# if there are no digits to the left of the decimal
-	{
-		$stringval = "0" . $stringval;
-	}
-	elsif ( $stringval =~ /^-\./ )	# if there are no digits to the left of the decimal (negative case)
-	{
-		substr($stringval,1,0) = "0";
-	}
-	elsif ( $stringval =~ /\.$/ )	# if there are no digits to the right of the decimal
-	{
-		chop $stringval;
-	}
-	return $stringval
-}	##stringify
-
-############################################################################
-sub numify		#05/11/99 12:02:PM
-############################################################################
-
-{
-	my $self = shift;
-	return ( $self->{VAL} + 0 );
-}	##numify
-
-############################################################################
-sub absolute		#06/15/99 4:47:PM
-############################################################################
-
-{
-	my $self = shift;
-	return $self->_new( abs($self->{VAL}), $self->{RADIX} );
-}	##absolute
-
-############################################################################
-sub boolean		#06/28/99 9:47:AM
-############################################################################
-
-{
-    my($object) = @_;
-	if ( $object->{VAL} != 0 )
-	{
-		return 1;
-	}
-	else
-	{
-		return 0;
-	}
-}	##boolean
 
 # Autoload methods go after =cut, and are processed by the autosplit program.
 
@@ -401,23 +125,19 @@ $section = $length / 9; # section is now 11.11 not 11.1111111...
 =head1 DESCRIPTION
 
 There are numerous instances where floating point math is unsuitable, yet the
-data does not consist solely of integers.  This module is designed to completely
-overload all standard math functions.  The module takes care of all conversion
-and rounding automatically.  Rounding is handled using the IEEE 754 standard
-even mode.  This is a complete rewrite to use Math::BigFloat, rather than
-Math::BigInt to handle the underlying math operations.
-
-This module is not a replacement for Math::BigFloat; rather it serves a similar
-but slightly different purpose.  By strictly limiting precision automatically,
-this module operates slightly more natually than Math::BigFloat when dealing
-with floating point numbers of limited accuracy.  Math::BigFloat can
-unintentially inflate the apparent accuracy of a calculation.
+data does not consist solely of integers.  This module employs new features
+in Math::BigFloat to automatically maintain precision during math operations.
+This is a convenience module, since all of the operations are handled by
+Math::BigFloat internally.  You could do everything this module does by
+setting some attributes in Math::BigFloat.  This module simplifies that
+task by assuming that if you specify a given number of decimal places in
+the call to new() then that should be the precision for that object going
+forward.
 
 Please examine assumptions you are operating under before deciding between this
 module and Math::BigFloat.  With this module the assumption is that your data
 is not very accurate and you do not want to overstate any resulting values;
-with Math::BigFloat, you can completely avoid the rounding problems associated
-with floating point notation.
+Math::BigFloat can unintentially inflate the apparent accuracy of a calculation.
 
 =head2 new(number[,precision])
 

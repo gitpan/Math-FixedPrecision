@@ -43,3 +43,6 @@ Revision history for Perl extension Math::FixedPrecision.
 
 0.14  3/12/2001 5:21PM
 	- fix handling of forced lower precision (reported by Les Howard <les@lesandchris.com>)
+0.20  2/19/2002 4:59PM
+	- Update to use new Math::BigFloat
+	- Last update (barring bugfixes)
